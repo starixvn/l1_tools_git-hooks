@@ -97,6 +97,7 @@ The hook automatically detects branches following the pattern `GL-{id}-feature-n
 | `gl-456-bug-fix`      | `"Fix critical bug"`     | `"Fix critical bug - Epic GL-456"`       |
 | `Gl-aaa-feature`      | `"Add new feature"`      | `"Add new feature - Epic GL-aaa"`        |
 | `gL-1a1b-test`        | `"Test feature"`         | `"Test feature - Epic GL-1a1b"`          |
+| `GL-3203-version`     | `"1.2.1-beta.6"`         | `"1.2.1-beta.6"` (no epic added)         |
 | `main`                | `"Update documentation"` | `"Update documentation"` (no epic added) |
 | `develop`             | `"Merge feature branch"` | `"Merge feature branch"` (no epic added) |
 
@@ -133,7 +134,15 @@ git commit -m "Add new feature"
 git log --oneline -1
 # Expected: "Add new feature - Epic GL-aaa"
 
-# 6. Test on main branch (should not add epic)
+# 6. Test version number commit (should not add epic)
+git checkout -b GL-3203-version
+echo "version update" > version.txt
+git add version.txt
+git commit -m "1.2.1-beta.6"
+git log --oneline -1
+# Expected: "1.2.1-beta.6" (no epic added)
+
+# 7. Test on main branch (should not add epic)
 git checkout main
 echo "another test" > test2.txt
 git add test2.txt

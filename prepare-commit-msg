@@ -27,35 +27,34 @@ SHA1=$3
 # Get the current branch name
 git_branch=$(git rev-parse --abbrev-ref HEAD)
 
-# Check if the branch name matches the pattern #GL-{id}-feature-name
-# if echo "$git_branch" | grep -Eq '^#GL-[0-9]+-'; then
-#   # Extract the id (number after #GL-)
-#   epic_id=$(echo "$git_branch" | sed -n 's/^#GL-\([0-9]\+\)-.*/\1/p')
-#   if [ -n "$epic_id" ]; then
-#     echo "epic-GL-$epic_id" >> "$COMMIT_MSG_FILE"
-#   fi
-# fi
+# Read the current commit message
+current_msg=$(cat "$COMMIT_MSG_FILE")
 
-# Prepare the text to append
-append_text=""
-# Case-insensitive match for GL/gl/Gl/gL followed by alphanumeric ID
-if echo "$git_branch" | grep -Eiq '^[Gg][Ll]-[a-zA-Z0-9]+-'; then
-  # Extract the ID (alphanumeric characters after GL- and before the next -)
-  epic_id=$(echo "$git_branch" | sed -n 's/^[Gg][Ll]-\([a-zA-Z0-9]\+\)-.*/\1/p')
-  if [ -n "$epic_id" ]; then
-    append_text="- Epic GL-$epic_id"
+# Check if the message starts with a version number pattern (e.g., 1.2.1-beta.6)
+# If it's a version number, skip adding epic ID entirely
+if echo "$current_msg" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?'; then
+  # Version number detected - don't add epic ID
+  echo "Version number detected, skipping epic ID addition"
+else
+  # Prepare the text to append for non-version messages
+  append_text=""
+  # Case-insensitive match for GL/gl/Gl/gL followed by alphanumeric ID
+  if echo "$git_branch" | grep -Eiq '^[Gg][Ll]-[a-zA-Z0-9]+-'; then
+    # Extract the ID (alphanumeric characters after GL- and before the next -)
+    epic_id=$(echo "$git_branch" | sed -n 's/^[Gg][Ll]-\([a-zA-Z0-9]\+\)-.*/\1/p')
+    if [ -n "$epic_id" ]; then
+      append_text="- Epic GL-$epic_id"
+    fi
+  fi
+
+  if [ -n "$append_text" ]; then
+    # Append to the end of the first line (commit title) for non-version messages
+    sed -i "1s/$/ $append_text/" "$COMMIT_MSG_FILE"
   fi
 fi
 
-if [ -n "$append_text" ]; then
-  # Append to the end of the first line (commit title)
-  sed -i "1s/$/ $append_text/" "$COMMIT_MSG_FILE"
-fi
-
-
+# Remove Git's default help text
 /usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
-
-
 
 # case "$COMMIT_SOURCE,$SHA1" in
 #  ,|template,)

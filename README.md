@@ -273,14 +273,43 @@ if echo "$git_branch" | grep -Eiq '^[Gg][Ll]-[a-zA-Z0-9]+-'; then
   fi
 fi
 
-if [ -n "$append_text" ]; then
-  # Append to the end of the first line (commit title)
-  sed -i "1s/$/ $append_text/" "$COMMIT_MSG_FILE"
+# Read the current commit message
+current_msg=$(cat "$COMMIT_MSG_FILE")
+
+# Check if the message starts with a version number pattern (e.g., 1.2.1-beta.6)
+# If it's a version number, skip adding epic ID entirely
+if echo "$current_msg" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?'; then
+  # Version number detected - don't add epic ID
+  echo "Version number detected, skipping epic ID addition"
+else
+  # Prepare the text to append for non-version messages
+  append_text=""
+  # Case-insensitive match for GL/gl/Gl/gL followed by alphanumeric ID
+  if echo "$git_branch" | grep -Eiq '^[Gg][Ll]-[a-zA-Z0-9]+-'; then
+    # Extract the ID (alphanumeric characters after GL- and before the next -)
+    epic_id=$(echo "$git_branch" | sed -n 's/^[Gg][Ll]-\([a-zA-Z0-9]\+\)-.*/\1/p')
+    if [ -n "$epic_id" ]; then
+      append_text="- Epic GL-$epic_id"
+    fi
+  fi
+
+  if [ -n "$append_text" ]; then
+    # Append to the end of the first line (commit title) for non-version messages
+    sed -i "1s/$/ $append_text/" "$COMMIT_MSG_FILE"
+  fi
 fi
 
 # Remove Git's default help text
 /usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
 ```
+
+### 🔄 Version Number Handling
+
+The hook intelligently handles version numbers by skipping epic ID addition:
+
+- **Version numbers** (e.g., `1.2.1-beta.6`) are left unchanged - no epic ID is added
+- **Regular messages** continue to work as before: `Add new feature` becomes `Add new feature - Epic GL-3203`
+- This ensures version numbers remain clean and unmodified
 
 ## 🚨 Troubleshooting
 
@@ -347,9 +376,32 @@ fi
 
 1. Verify the hook is executable: `ls -la .git/hooks/prepare-commit-msg`
 2. Check branch naming follows the pattern: `GL-{id}-feature-name` (case-insensitive, alphanumeric IDs)
-3. Test with verbose mode to see detailed output
-4. Check Git version compatibility (works with Git 1.7+)
-5. For global installation, verify: `git config --global core.hooksPath`
+
+### Commit Message Validation Errors
+
+**Problem**: Commit fails with validation errors like `subject may not be empty [subject-empty]` or `type may not be empty [type-empty]`.
+
+**Solutions**:
+
+1. **Version Numbers**: The hook automatically skips adding epic IDs to version numbers:
+
+   - `1.2.1-beta.6` remains `1.2.1-beta.6` (no epic ID added)
+   - This keeps version numbers clean and unmodified
+
+2. **Regular Messages**: For non-version messages, ensure they follow conventional commit format:
+
+   - Use: `feat: add new feature` or `fix: resolve bug`
+   - Avoid: `Add new feature` (missing type)
+
+3. **Check Validation Rules**: If using commitlint, verify your configuration allows the commit types you're using
+
+4. **Test the Hook**: Try a simple commit to verify the hook is working:
+   ```bash
+   git commit -m "test: simple test message"
+   ```
+5. Test with verbose mode to see detailed output
+6. Check Git version compatibility (works with Git 1.7+)
+7. For global installation, verify: `git config --global core.hooksPath`
 
 ## 🔄 Updating the Hook
 
